@@ -1,6 +1,6 @@
 import pytest
 
-from pyredis.protocol import extract_frame_from_buffer, SimpleString, SimpleError
+from pyredis.protocol import extract_frame_from_buffer, SimpleString, SimpleError, Integer
 
 
 @pytest.mark.parametrize("buffer, expected", [
@@ -19,3 +19,8 @@ def test_read_frame_simple_string(buffer, expected):
 def test_read_frame_simple_error(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
     assert actual == expected
+
+def test_read_frame_integer():
+    buffer = b":1\r\n"
+    actual = extract_frame_from_buffer(buffer)
+    assert actual == (Integer(1), 4)
