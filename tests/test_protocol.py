@@ -6,7 +6,8 @@ from pyredis.protocol import extract_frame_from_buffer, SimpleString, SimpleErro
 @pytest.mark.parametrize("buffer, expected", [
     (b"+Par", (None, 0)),
     (b"+OK\r\n", (SimpleString("OK"), 5)),
-    (b"+OK\r\n+Next", (SimpleString("OK"), 5))
+    (b"+OK\r\n+Next", (SimpleString("OK"), 5)),
+    (b"+hello world\r\n", (SimpleString("hello world"), 14))
 ])
 def test_read_frame_simple_string(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
