@@ -41,7 +41,16 @@ def test_read_frame_array(buffer, expected):
     assert actual == expected
 
 @pytest.mark.parametrize("buffer, expected", [
-    (b"$0\r\n\r\n", (BulkString(""), 6))
+    (b"$-1\r\n", (None, 5)),
+    (b"*-1\r\n", (None, 5))
+])
+def test_read_frame_nulls(buffer, expected):
+    actual = extract_frame_from_buffer(buffer)
+    assert actual == expected
+
+@pytest.mark.parametrize("buffer, expected", [
+    (b"$0\r\n\r\n", (BulkString(""), 6)),
+    (b"$2\r\nhi\r\n", (BulkString("hi"), 8))
 ])
 def test_read_frame_bulkstring(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
