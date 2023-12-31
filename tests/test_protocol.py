@@ -20,7 +20,10 @@ def test_read_frame_simple_error(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
     assert actual == expected
 
-def test_read_frame_integer():
-    buffer = b":1\r\n"
+@pytest.mark.parametrize("buffer, expected", [
+    (b":1\r\n", (Integer(1), 4)),
+    (b":12\r\n", (Integer(12), 5))
+])
+def test_read_frame_integer(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
-    assert actual == (Integer(1), 4)
+    assert actual == expected
