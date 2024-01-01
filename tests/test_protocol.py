@@ -23,7 +23,8 @@ def test_read_frame_simple_error(buffer, expected):
 
 @pytest.mark.parametrize("buffer, expected", [
     (b":1\r\n", (Integer(1), 4)),
-    (b":12\r\n", (Integer(12), 5))
+    (b":12\r\n", (Integer(12), 5)),
+    (b":123\r\n", (Integer(123), 6))
 ])
 def test_read_frame_integer(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
@@ -35,7 +36,8 @@ def test_read_frame_integer(buffer, expected):
     (b"*3\r\n:1\r\n:2\r\n:3\r\n", (Array([Integer(1), Integer(2), Integer(3)]), 16)),
     (b"*1\r\n$4\r\nping\r\n", (Array([BulkString("ping")]), 14)),
     (b"*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n", (Array([BulkString("echo"), BulkString("hello world")]), 32)),
-    (b"*2\r\n$3\r\nget\r\n$3\r\nkey\r\n", (Array([BulkString("get"), BulkString("key")]), 22))
+    (b"*2\r\n$3\r\nget\r\n$3\r\nkey\r\n", (Array([BulkString("get"), BulkString("key")]), 22)),
+    (b"*2\r\n$5\r\nhello\r\n$5\r\n", (None, 0)),
 ])
 def test_read_frame_array(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
