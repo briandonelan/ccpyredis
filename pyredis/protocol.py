@@ -55,8 +55,10 @@ def extract_frame_from_buffer(buffer):
 
                 buffer = buffer[separator+2:]
 
-                for ii in range(array_separator_count):
+                for _ in range(array_separator_count):
                     (frame, length_parsed) = extract_frame_from_buffer(buffer)
+                    if frame is None:
+                        return None, 0
                     array_parsed_elements.append(frame)
                     buffer = buffer[length_parsed:]
 
@@ -70,6 +72,9 @@ def extract_frame_from_buffer(buffer):
 
                 if int(buffer[1:separator].decode()) < 0:
                     return None, len(buffer[:separator + 2])
+
+                if int(buffer[1:separator].decode()) != len(buffer.split(b"\r\n")[1]):
+                    return None, 0
 
                 return BulkString(buffer[separator + 2 : length].decode()), length + 2
 
