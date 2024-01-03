@@ -1,48 +1,24 @@
-from dataclasses import dataclass
+from pyredis.types import SimpleString, Error, Integer, BulkString, Array
 
 MSG_SEPARATOR = b"\r\n"
 
-@dataclass
-class SimpleString:
-    data: str
-
-@dataclass
-class SimpleError:
-    data: str
-
-@dataclass
-class Integer:
-    data: int
-
-class BulkString(SimpleString):
-    pass
-
-@dataclass
-class Array:
-    data: list
-
 def extract_frame_from_buffer(buffer):
+    separator = buffer.find(MSG_SEPARATOR)
+
     match chr(buffer[0]):
         case '+':
-            separator = buffer.find(MSG_SEPARATOR)
-
             if separator != -1:
                 return SimpleString(buffer[1:separator].decode()), separator + 2
 
         case '-':
-            separator = buffer.find(MSG_SEPARATOR)
-
             if separator != -1:
-                return SimpleError(buffer[1:separator].decode()), separator + 2
+                return Error(buffer[1:separator].decode()), separator + 2
 
         case ':':
-            separator = buffer.find(MSG_SEPARATOR)
-
             if separator != -1:
                 return Integer(int(buffer[1:separator].decode())), separator + 2
 
         case '*':
-            separator = buffer.find(MSG_SEPARATOR)
             length = len(buffer)
 
             if separator != -1:
@@ -65,8 +41,6 @@ def extract_frame_from_buffer(buffer):
                 return Array(array_parsed_elements), length
 
         case '$':
-            separator = buffer.find(MSG_SEPARATOR)
-
             if separator != -1:
                 length = int(buffer[1:separator].decode()) + separator + 2
 

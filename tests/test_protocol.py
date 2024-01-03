@@ -1,6 +1,7 @@
 import pytest
 
-from pyredis.protocol import extract_frame_from_buffer, SimpleString, SimpleError, Integer, Array, BulkString
+from pyredis.protocol import extract_frame_from_buffer
+from pyredis.types import SimpleString, Error, Integer, BulkString, Array
 
 
 @pytest.mark.parametrize("buffer, expected", [
@@ -15,7 +16,7 @@ def test_read_frame_simple_string(buffer, expected):
 
 @pytest.mark.parametrize("buffer, expected", [
     (b"-Par", (None, 0)),
-    (b"-Error message\r\n", (SimpleError("Error message"), 16))
+    (b"-Error message\r\n", (Error("Error message"), 16))
 ])
 def test_read_frame_simple_error(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
