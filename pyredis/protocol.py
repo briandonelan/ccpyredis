@@ -1,55 +1,67 @@
-from pyredis.types import SimpleString, Error, Integer, BulkString, Array
+from pyredis.types import Array, BulkString, Error, Integer, SimpleString
 
-MSG_SEPARATOR = b"\r\n"
+
+_MSG_SEPARATOR = b"\r\n"
+_MSG_SEPARATOR_SIZE = len(_MSG_SEPARATOR)
+
 
 def extract_frame_from_buffer(buffer):
-    separator = buffer.find(MSG_SEPARATOR)
+    separator = buffer.find(_MSG_SEPARATOR)
 
-    match chr(buffer[0]):
-        case '+':
-            if separator != -1:
-                return SimpleString(buffer[1:separator].decode()), separator + 2
+    if separator == -1:
+        return None, 0
+    else:
+        payload = buffer[1:separator].decode()
 
-        case '-':
-            if separator != -1:
-                return Error(buffer[1:separator].decode()), separator + 2
+        match chr(buffer[0]):
+            case "+":
+                return SimpleString(payload), separator + _MSG_SEPARATOR_SIZE
 
-        case ':':
-            if separator != -1:
-                return Integer(int(buffer[1:separator].decode())), separator + 2
+            case "-":
+                return Error(payload), separator + _MSG_SEPARATOR_SIZE
 
-        case '*':
-            length = len(buffer)
+            case ":":
+                return Integer(int(payload)), separator + _MSG_SEPARATOR_SIZE
 
-            if separator != -1:
-                array_separator_count = int(buffer[1:separator].decode())
+            case "$":
+                length = int(payload)
 
-                if array_separator_count < 0:
-                    return None, separator + 2
-
-                array_parsed_elements = []
-
-                buffer = buffer[separator+2:]
-
-                for _ in range(array_separator_count):
-                    (frame, length_parsed) = extract_frame_from_buffer(buffer)
-                    if frame is None:
+                if length == -1:
+                    return BulkString(None), 5
+                else:
+                    if (
+                        len(buffer)
+                        < separator + _MSG_SEPARATOR_SIZE + length + _MSG_SEPARATOR_SIZE
+                    ):
                         return None, 0
-                    array_parsed_elements.append(frame)
-                    buffer = buffer[length_parsed:]
+                    else:
+                        end_of_message = separator + 2 + length
+                        return (
+                            BulkString(buffer[separator + 2 : end_of_message]),
+                            end_of_message + _MSG_SEPARATOR_SIZE,
+                        )
 
-                return Array(array_parsed_elements), length
+            case "*":
+                length = int(payload)
 
-        case '$':
-            if separator != -1:
-                length = int(buffer[1:separator].decode()) + separator + 2
+                if length == 0:
+                    return Array([]), separator + _MSG_SEPARATOR_SIZE
 
-                if int(buffer[1:separator].decode()) < 0:
-                    return None, len(buffer[:separator + 2])
+                if length == -1:
+                    return Array(None), separator + _MSG_SEPARATOR_SIZE
 
-                if int(buffer[1:separator].decode()) != len(buffer.split(b"\r\n")[1]):
-                    return None, 0
+                array = []
 
-                return BulkString(buffer[separator + 2 : length].decode()), length + 2
+                for _ in range(length):
+                    next_item, length = extract_frame_from_buffer(
+                        buffer[separator + _MSG_SEPARATOR_SIZE :]
+                    )
 
+                    if next_item and length:
+                        array.append(next_item)
+                        separator += length
+                    else:
+                        return None, 0
+
+                return Array(array), separator + _MSG_SEPARATOR_SIZE
     return None, 0

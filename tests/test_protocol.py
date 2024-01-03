@@ -3,59 +3,54 @@ import pytest
 from pyredis.protocol import extract_frame_from_buffer
 from pyredis.types import SimpleString, Error, Integer, BulkString, Array
 
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b"+Par", (None, 0)),
-    (b"+OK\r\n", (SimpleString("OK"), 5)),
-    (b"+OK\r\n+Next", (SimpleString("OK"), 5)),
-    (b"+hello world\r\n", (SimpleString("hello world"), 14))
-])
-def test_read_frame_simple_string(buffer, expected):
-    actual = extract_frame_from_buffer(buffer)
-    assert actual == expected
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b"-Par", (None, 0)),
-    (b"-Error message\r\n", (Error("Error message"), 16))
-])
-def test_read_frame_simple_error(buffer, expected):
-    actual = extract_frame_from_buffer(buffer)
-    assert actual == expected
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b":1\r\n", (Integer(1), 4)),
-    (b":12\r\n", (Integer(12), 5)),
-    (b":123\r\n", (Integer(123), 6))
-])
-def test_read_frame_integer(buffer, expected):
-    actual = extract_frame_from_buffer(buffer)
-    assert actual == expected
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b"*0\r\n", (Array([]), 4)),
-    (b"*2\r\n:1\r\n:2\r\n", (Array([Integer(1), Integer(2)]), 12)),
-    (b"*3\r\n:1\r\n:2\r\n:3\r\n", (Array([Integer(1), Integer(2), Integer(3)]), 16)),
-    (b"*1\r\n$4\r\nping\r\n", (Array([BulkString("ping")]), 14)),
-    (b"*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n", (Array([BulkString("echo"), BulkString("hello world")]), 32)),
-    (b"*2\r\n$3\r\nget\r\n$3\r\nkey\r\n", (Array([BulkString("get"), BulkString("key")]), 22)),
-    (b"*2\r\n$5\r\nhello\r\n$5\r\n", (None, 0)),
-])
-def test_read_frame_array(buffer, expected):
-    actual = extract_frame_from_buffer(buffer)
-    assert actual == expected
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b"$-1\r\n", (None, 5)),
-    (b"*-1\r\n", (None, 5))
-])
-def test_read_frame_nulls(buffer, expected):
-    actual = extract_frame_from_buffer(buffer)
-    assert actual == expected
-
-@pytest.mark.parametrize("buffer, expected", [
-    (b"$0\r\n\r\n", (BulkString(""), 6)),
-    (b"$2\r\nhi\r\n", (BulkString("hi"), 8))
-])
-def test_read_frame_bulkstring(buffer, expected):
+@pytest.mark.parametrize(
+    "buffer, expected",
+    [
+        # Test invalid Message
+        (b"PING\r\n", (None, 0)),
+        # Test cases for Simple Strings
+        (b"+Par", (None, 0)),
+        (b"+OK\r\n", (SimpleString("OK"), 5)),
+        (b"+OK\r\n+Next", (SimpleString("OK"), 5)),
+        # Test cases for Errors
+        (b"-Err", (None, 0)),
+        (b"-Error Message\r\n", (Error("Error Message"), 16)),
+        (b"-Error Message\r\n+Other", (Error("Error Message"), 16)),
+        # Test cases for Integers
+        (b":10", (None, 0)),
+        (b":100\r\n", (Integer(100), 6)),
+        (b":100\r\n+OK", (Integer(100), 6)),
+        # Test cases for Bulk Strings
+        (b"$5\r\nHel", (None, 0)),
+        (b"$5\r\nHello\r\n", (BulkString(b"Hello"), 11)),
+        (b"$12\r\nHello, World\r\n", (BulkString(b"Hello, World"), 19)),
+        (b"$12\r\nHello\r\nWorld\r\n", (BulkString(b"Hello\r\nWorld"), 19)),
+        (b"$0\r\n\r\n", (BulkString(b""), 6)),
+        (b"$-1\r\n", (BulkString(None), 5)),
+        # Test case for Arrays
+        (b"*0", (None, 0)),
+        (b"*0\r\n", (Array([]), 4)),
+        (b"*-1\r\n", (Array(None), 5)),
+        (b"*2\r\n$5\r\nhello\r\n$5\r\n", (None, 0)),
+        (
+            b"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n",
+            (Array([BulkString(b"hello"), BulkString(b"world")]), 26),
+        ),
+        (
+            b"*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n+OK",
+            (Array([BulkString(b"hello"), BulkString(b"world")]), 26),
+        ),
+        (b"*3\r\n:1\r\n:", (None, 0)),
+        (
+            b"*3\r\n:1\r\n:2\r\n:3\r\n",
+            (Array([Integer(1), Integer(2), Integer(3)]), 16),
+        ),
+        (
+            b"*3\r\n:1\r\n:2\r\n:3\r\n+OK",
+            (Array([Integer(1), Integer(2), Integer(3)]), 16),
+        ),
+    ],
+)
+def test_read_frame(buffer, expected):
     actual = extract_frame_from_buffer(buffer)
     assert actual == expected
